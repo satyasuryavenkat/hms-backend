@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: hms-backend
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MIN_IDLE
+        value: "0"
+      - key: DDL_AUTO
+        value: update
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BOOTSTRAP_DATA
+        value: "true"
+      - key: BOOTSTRAP_ADMIN_USERNAME
+        value: admin@medora.in
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
