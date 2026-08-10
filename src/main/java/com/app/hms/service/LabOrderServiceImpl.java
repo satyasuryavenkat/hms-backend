@@ -53,6 +53,7 @@ public class LabOrderServiceImpl implements LabOrderService {
       i.setDepartment(t.getDepartment());
       i.setSpecimenType(t.getSpecimenType() == null ? SpecimenType.BLOOD : t.getSpecimenType());
       i.setAmount(t.getPrice());
+      i.setReportTemplateHtml(t.getReportTemplateHtml());
       addReportParameters(i, t);
       o.getTests().add(i);
       total = total.add(t.getPrice());
@@ -120,6 +121,7 @@ public class LabOrderServiceImpl implements LabOrderService {
       LabResult result =
           Optional.ofNullable(all.get(x.parameterId()))
               .orElseThrow(() -> new BadRequestException("Unknown parameter: " + x.parameterId()));
+      if (result.getParameterType() == LabParameterType.HEADING) continue;
       result.setResult(x.result());
       result.setRemarks(x.remarks());
       result.setAbnormal(x.abnormal());
@@ -140,6 +142,7 @@ public class LabOrderServiceImpl implements LabOrderService {
     boolean missing =
         o.getTests().stream()
             .flatMap(i -> i.getResults().stream())
+            .filter(x -> x.getParameterType() != LabParameterType.HEADING)
             .anyMatch(x -> x.getResult() == null || x.getResult().isBlank());
     if (missing) throw new BadRequestException("All report parameters require results");
     o.setReportStatus(LabReportStatus.VERIFIED);
@@ -190,10 +193,15 @@ public class LabOrderServiceImpl implements LabOrderService {
     for (LabOrderItem item : order.getTests()) {
       LabTest test = tests.findById(item.getTestId()).orElse(null);
       if (!item.getResults().isEmpty()) {
-        if (!isUnusedGeneralResult(item) || test == null || test.getParameters().isEmpty()) {
+        if (test == null || test.getParameters().isEmpty()) {
           continue;
         }
-        item.getResults().clear();
+        if (isUnusedGeneralResult(item)
+            || (isBlankReport(item) && !matchesCurrentTemplate(item, test))) {
+          item.getResults().clear();
+        } else {
+          continue;
+        }
       }
       addReportParameters(item, test);
     }
@@ -244,9 +252,37 @@ public class LabOrderServiceImpl implements LabOrderService {
         && Objects.equals(result.getReferenceRange(), "As per clinical interpretation");
   }
 
+  private boolean isBlankReport(LabOrderItem item) {
+    return item.getResults().stream()
+        .allMatch(
+            result ->
+                (result.getResult() == null || result.getResult().isBlank())
+                    && (result.getRemarks() == null || result.getRemarks().isBlank()));
+  }
+
+  private boolean matchesCurrentTemplate(LabOrderItem item, LabTest test) {
+    Set<Long> resultIds =
+        item.getResults().stream().map(LabResult::getParameterId).collect(java.util.stream.Collectors.toSet());
+    Set<Long> templateIds =
+        test.getParameters().stream()
+            .map(LabParameter::getParameterId)
+            .collect(java.util.stream.Collectors.toSet());
+    return resultIds.equals(templateIds);
+  }
+
   private void addReportParameters(LabOrderItem item, LabTest test) {
     if (test != null && !test.getParameters().isEmpty()) {
-      for (LabParameter parameter : test.getParameters()) {
+      List<LabParameter> parameters =
+          test.getParameters().stream()
+              .sorted(
+                  Comparator.comparing(
+                      parameter ->
+                          parameter.getDisplayOrder() == null
+                              ? Integer.MAX_VALUE
+                              : parameter.getDisplayOrder()))
+              .toList();
+      for (int index = 0; index < parameters.size(); index++) {
+        LabParameter parameter = parameters.get(index);
         LabResult result = new LabResult();
         result.setItem(item);
         result.setParameterId(
@@ -256,6 +292,12 @@ public class LabOrderServiceImpl implements LabOrderService {
         result.setName(parameter.getName());
         result.setUnit(parameter.getUnit());
         result.setReferenceRange(parameter.getReferenceRange());
+        result.setParameterType(
+            parameter.getParameterType() == null
+                ? LabParameterType.NUMERIC
+                : parameter.getParameterType());
+        result.setDisplayOrder(
+            parameter.getDisplayOrder() == null ? index : parameter.getDisplayOrder());
         item.getResults().add(result);
       }
       return;
@@ -266,6 +308,8 @@ public class LabOrderServiceImpl implements LabOrderService {
     result.setName(item.getName() + " Result");
     result.setUnit("");
     result.setReferenceRange("As per clinical interpretation");
+    result.setParameterType(LabParameterType.TEXT);
+    result.setDisplayOrder(0);
     item.getResults().add(result);
   }
 }

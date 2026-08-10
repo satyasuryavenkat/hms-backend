@@ -1,5 +1,6 @@
 package com.app.hms.entity;
 
+import com.app.hms.common.Enums.LabParameterType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,4 +23,9 @@ public class LabResult {
   private String referenceRange;
   private String remarks;
   private boolean abnormal;
+
+  @Enumerated(EnumType.STRING)
+  private LabParameterType parameterType = LabParameterType.NUMERIC;
+
+  private Integer displayOrder;
 }

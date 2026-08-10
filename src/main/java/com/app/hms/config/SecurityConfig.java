@@ -36,6 +36,19 @@ public class SecurityConfig {
             a ->
                 a.requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh", "/actuator/health")
                     .permitAll()
+                    .requestMatchers(
+                        "/",
+                        "/index.html",
+                        "/asset-manifest.json",
+                        "/favicon.ico",
+                        "/manifest.json",
+                        "/robots.txt",
+                        "/logo192.png",
+                        "/logo512.png",
+                        "/hms-logo.jpeg",
+                        "/hms-symbol.png",
+                        "/static/**")
+                    .permitAll()
                     .requestMatchers(HttpMethod.OPTIONS, "/**")
                     .permitAll()
                     .anyRequest()

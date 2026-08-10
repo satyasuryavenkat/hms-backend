@@ -93,6 +93,21 @@
 	</dependencies>
 
 	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+			<!--
+				The Windows/local production build creates the React application first.
+				Including it here lets the executable Spring Boot jar serve both the UI
+				and the REST API from the same port.
+			-->
+			<resource>
+				<directory>${project.basedir}/../hms-frontend/build</directory>
+				<targetPath>static</targetPath>
+				<filtering>false</filtering>
+			</resource>
+		</resources>
 		<plugins>
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>

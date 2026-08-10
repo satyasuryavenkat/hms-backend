@@ -32,7 +32,8 @@ public record LabOrderResponse(
       SpecimenType specimenType,
       BigDecimal amount,
       String status,
-      List<ResultItem> results) {}
+      List<ResultItem> results,
+      String reportTemplateHtml) {}
 
   public record ResultItem(
       @JsonSerialize(using = ToStringSerializer.class) Long parameterId,
@@ -41,7 +42,9 @@ public record LabOrderResponse(
       String unit,
       String referenceRange,
       String remarks,
-      boolean abnormal) {}
+      boolean abnormal,
+      LabParameterType parameterType,
+      Integer displayOrder) {}
 
   public record SpecimenLabel(
       String barcode,

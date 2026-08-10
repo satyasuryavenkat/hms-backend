@@ -29,6 +29,9 @@ public class LabOrderItem {
   private BigDecimal amount;
   private String status = "ORDERED";
 
+  @Column(columnDefinition = "TEXT")
+  private String reportTemplateHtml;
+
   @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<LabResult> results = new ArrayList<>();
 }

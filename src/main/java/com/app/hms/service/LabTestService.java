@@ -12,4 +12,8 @@ public interface LabTestService {
   LabTestResponse create(LabTestRequest request);
 
   LabTestResponse update(Long id, LabTestRequest request);
+
+  LabTestResponse updateReportTemplate(Long id, String html);
+
+  void delete(Long id);
 }

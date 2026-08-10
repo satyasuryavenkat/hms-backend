@@ -192,21 +192,21 @@ public class IpdServiceImpl implements IpdService {
     a.setDischargeType(r.dischargeType());
     a.setFinalDiagnosis(r.finalDiagnosis());
     a.setClinicalSummary(r.clinicalSummary());
-    a.setMedications(
-        r.medications() == null
-            ? new ArrayList<>()
-            : r.medications().stream()
-                .map(
-                    m -> {
-                      Medication medication = new Medication();
-                      medication.setMedicine(m.medicine());
-                      medication.setDose(m.dose());
-                      medication.setFrequency(m.frequency());
-                      medication.setDuration(m.duration());
-                      medication.setInstructions(m.instructions());
-                      return medication;
-                    })
-                .toList());
+    List<Medication> medications = new ArrayList<>();
+    if (r.medications() != null) {
+      r.medications()
+          .forEach(
+              m -> {
+                Medication medication = new Medication();
+                medication.setMedicine(m.medicine());
+                medication.setDose(m.dose());
+                medication.setFrequency(m.frequency());
+                medication.setDuration(m.duration());
+                medication.setInstructions(m.instructions());
+                medications.add(medication);
+              });
+    }
+    a.setMedications(medications);
     a.setAdvice(r.advice());
     a.setFollowUpDate(r.followUpDate());
     if (r.followUpDoctorId() != null)

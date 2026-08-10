@@ -11,6 +11,8 @@ public interface DoctorDao {
 
   Doctor save(Doctor doctor);
 
+  void delete(Doctor doctor);
+
   boolean existsByCode(String code, Long excludedId);
 
   long count();

@@ -23,6 +23,15 @@ public class LabOrderDaoImpl implements LabOrderDao {
   }
 
   public Page<LabOrder> search(String q, LabReportStatus s, LocalDate d, Pageable p) {
-    return repository.search(q, s, d, p);
+    if (s == null && d == null) {
+      return repository.searchAll(q, p);
+    }
+    if (s != null && d == null) {
+      return repository.searchByStatus(q, s, p);
+    }
+    if (s == null) {
+      return repository.searchByDate(q, d, p);
+    }
+    return repository.searchByStatusAndDate(q, s, d, p);
   }
 }

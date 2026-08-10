@@ -1,5 +1,6 @@
 package com.app.hms.mapper;
 
+import com.app.hms.common.Enums.LabParameterType;
 import com.app.hms.common.Enums.SpecimenType;
 import com.app.hms.dto.request.LabTestRequest;
 import com.app.hms.dto.response.LabParameterResponse;
@@ -23,11 +24,22 @@ public class LabTestMapper {
         t.getSpecimenType() == null ? SpecimenType.BLOOD : t.getSpecimenType(),
         t.isActive(),
         t.getParameters().stream()
+            .sorted(
+                java.util.Comparator.comparing(
+                    p -> p.getDisplayOrder() == null ? Integer.MAX_VALUE : p.getDisplayOrder()))
             .map(
                 p ->
                     new LabParameterResponse(
-                        p.getParameterId(), p.getName(), p.getUnit(), p.getReferenceRange()))
-            .toList());
+                        p.getParameterId(),
+                        p.getName(),
+                        p.getUnit(),
+                        p.getReferenceRange(),
+                        p.getParameterType() == null
+                            ? LabParameterType.NUMERIC
+                            : p.getParameterType(),
+                        p.getDisplayOrder()))
+            .toList(),
+        t.getReportTemplateHtml());
   }
 
   public void update(LabTest t, LabTestRequest r) {
@@ -47,19 +59,22 @@ public class LabTestMapper {
       } else {
         t.getParameters().clear();
       }
-      r.parameters()
-          .forEach(
-              p -> {
-                LabParameter entity = new LabParameter();
-                entity.setParameterId(
-                    p.parameterId() == null
-                        ? UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE
-                        : p.parameterId());
-                entity.setName(p.name());
-                entity.setUnit(p.unit());
-                entity.setReferenceRange(p.referenceRange());
-                t.getParameters().add(entity);
-              });
+      for (int index = 0; index < r.parameters().size(); index++) {
+        var p = r.parameters().get(index);
+        LabParameter entity = new LabParameter();
+        entity.setParameterId(
+            p.parameterId() == null
+                ? UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE
+                : p.parameterId());
+        entity.setName(p.name());
+        entity.setUnit(p.parameterType() == LabParameterType.NUMERIC ? p.unit() : "");
+        entity.setReferenceRange(
+            p.parameterType() == LabParameterType.NUMERIC ? p.referenceRange() : "");
+        entity.setParameterType(
+            p.parameterType() == null ? LabParameterType.NUMERIC : p.parameterType());
+        entity.setDisplayOrder(index);
+        t.getParameters().add(entity);
+      }
     }
   }
 }

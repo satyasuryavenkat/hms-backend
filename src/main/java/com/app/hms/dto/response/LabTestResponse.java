@@ -13,4 +13,5 @@ public record LabTestResponse(
     Integer turnaroundHours,
     SpecimenType specimenType,
     boolean active,
-    List<LabParameterResponse> parameters) {}
+    List<LabParameterResponse> parameters,
+    String reportTemplateHtml) {}

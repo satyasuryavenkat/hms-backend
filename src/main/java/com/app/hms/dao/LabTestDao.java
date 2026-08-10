@@ -13,4 +13,6 @@ public interface LabTestDao {
   boolean existsByCode(String code, Long excludedId);
 
   LabTest save(LabTest test);
+
+  void delete(LabTest test);
 }

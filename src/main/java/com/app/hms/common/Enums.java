@@ -28,6 +28,11 @@ public final class Enums {
     FOLLOW_UP
   }
 
+  public enum FollowUpStatus {
+    PENDING,
+    REMINDED
+  }
+
   public enum LabPriority {
     ROUTINE,
     URGENT
@@ -39,6 +44,12 @@ public final class Enums {
     VERIFIED,
     PUBLISHED,
     CANCELLED
+  }
+
+  public enum LabParameterType {
+    NUMERIC,
+    TEXT,
+    HEADING
   }
 
   public enum SpecimenType {

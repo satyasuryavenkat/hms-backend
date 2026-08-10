@@ -30,6 +30,9 @@ public class LabTest {
 
   private boolean active = true;
 
+  @Column(columnDefinition = "TEXT")
+  private String reportTemplateHtml;
+
   @ElementCollection
   @CollectionTable(name = "lab_test_parameters")
   private List<LabParameter> parameters = new ArrayList<>();

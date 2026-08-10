@@ -1,5 +1,6 @@
 package com.app.hms.mapper;
 
+import com.app.hms.common.Enums.LabParameterType;
 import com.app.hms.dto.response.LabOrderResponse;
 import com.app.hms.entity.*;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,12 @@ public class LabOrderMapper {
                         i.getAmount(),
                         i.getStatus(),
                         i.getResults().stream()
+                            .sorted(
+                                java.util.Comparator.comparing(
+                                    r ->
+                                        r.getDisplayOrder() == null
+                                            ? Integer.MAX_VALUE
+                                            : r.getDisplayOrder()))
                             .map(
                                 r ->
                                     new LabOrderResponse.ResultItem(
@@ -34,8 +41,13 @@ public class LabOrderMapper {
                                         r.getUnit(),
                                         r.getReferenceRange(),
                                         r.getRemarks(),
-                                        r.isAbnormal()))
-                            .toList()))
+                                        r.isAbnormal(),
+                                        r.getParameterType() == null
+                                            ? LabParameterType.NUMERIC
+                                            : r.getParameterType(),
+                                        r.getDisplayOrder()))
+                            .toList(),
+                        i.getReportTemplateHtml()))
             .toList();
     var specimens =
         o.getSpecimens().stream()

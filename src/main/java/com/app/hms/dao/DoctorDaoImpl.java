@@ -33,6 +33,12 @@ public class DoctorDaoImpl implements DoctorDao {
   }
 
   @Override
+  public void delete(Doctor doctor) {
+    repository.delete(doctor);
+    repository.flush();
+  }
+
+  @Override
   public boolean existsByCode(String code, Long excludedId) {
     return excludedId == null
         ? repository.existsByDoctorCodeIgnoreCase(code)

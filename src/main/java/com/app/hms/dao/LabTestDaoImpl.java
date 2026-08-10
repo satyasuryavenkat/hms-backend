@@ -12,7 +12,16 @@ public class LabTestDaoImpl implements LabTestDao {
   private final LabTestRepository repository;
 
   public List<LabTest> search(String q, String d, Boolean a) {
-    return repository.search(q, d, a);
+    if (d == null && a == null) {
+      return repository.searchAll(q);
+    }
+    if (d == null) {
+      return repository.searchByActive(q, a);
+    }
+    if (a == null) {
+      return repository.searchByDepartment(q, d);
+    }
+    return repository.searchByDepartmentAndActive(q, d, a);
   }
 
   public Optional<LabTest> findById(Long id) {
@@ -29,5 +38,10 @@ public class LabTestDaoImpl implements LabTestDao {
 
   public LabTest save(LabTest t) {
     return repository.save(t);
+  }
+
+  public void delete(LabTest test) {
+    repository.delete(test);
+    repository.flush();
   }
 }

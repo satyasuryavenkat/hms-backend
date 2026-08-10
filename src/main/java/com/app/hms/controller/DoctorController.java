@@ -40,4 +40,11 @@ public class DoctorController {
       @PathVariable Long doctorId, @Valid @RequestBody DoctorRequest request) {
     return ApiResponse.ok("Doctor updated successfully", service.update(doctorId, request));
   }
+
+  @DeleteMapping("/{doctorId}")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
+  public ApiResponse<Void> delete(@PathVariable Long doctorId) {
+    service.delete(doctorId);
+    return ApiResponse.ok("Doctor deleted successfully", null);
+  }
 }

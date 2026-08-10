@@ -2,6 +2,7 @@ package com.app.hms.controller;
 
 import com.app.hms.common.ApiResponse;
 import com.app.hms.dto.request.LabTestRequest;
+import com.app.hms.dto.request.LabReportTemplateRequest;
 import com.app.hms.dto.response.LabTestResponse;
 import com.app.hms.service.LabTestService;
 import jakarta.validation.Valid;
@@ -40,5 +41,21 @@ public class LabTestController {
   public ApiResponse<LabTestResponse> update(
       @PathVariable Long testId, @Valid @RequestBody LabTestRequest request) {
     return ApiResponse.ok("Lab test updated successfully", service.update(testId, request));
+  }
+
+  @PutMapping("/{testId}/report-template")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
+  public ApiResponse<LabTestResponse> updateReportTemplate(
+      @PathVariable Long testId, @Valid @RequestBody LabReportTemplateRequest request) {
+    return ApiResponse.ok(
+        "Report template updated successfully",
+        service.updateReportTemplate(testId, request.html()));
+  }
+
+  @DeleteMapping("/{testId}")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
+  public ApiResponse<Void> delete(@PathVariable Long testId) {
+    service.delete(testId);
+    return ApiResponse.ok("Lab test deleted successfully", null);
   }
 }

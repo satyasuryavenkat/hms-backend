@@ -9,6 +9,7 @@ import com.app.hms.entity.Doctor;
 import com.app.hms.mapper.DoctorMapper;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +51,18 @@ public class DoctorServiceImpl implements DoctorService {
       throw new BadRequestException("Doctor code already exists");
     }
     return mapper.toResponse(dao.save(updateEntity(findEntityById(id), request)));
+  }
+
+  @Override
+  @Transactional
+  public void delete(Long id) {
+    Doctor doctor = findEntityById(id);
+    try {
+      dao.delete(doctor);
+    } catch (DataIntegrityViolationException exception) {
+      throw new BadRequestException(
+          "Doctor cannot be deleted because hospital records use this doctor. Mark the doctor inactive instead.");
+    }
   }
 
   private Doctor updateEntity(Doctor doctor, DoctorRequest request) {
