@@ -41,7 +41,6 @@ public class Medicine {
   @Column(nullable = false, precision = 5, scale = 2)
   private BigDecimal taxPercent = BigDecimal.ZERO;
 
-  @Column(nullable = false)
   private LocalDate expiryDate;
 
   private boolean active = true;

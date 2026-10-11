@@ -15,4 +15,7 @@ public record FinalBillResponse(
     PaymentMode paymentMode,
     PaymentStatus paymentStatus,
     OffsetDateTime settledAt,
-    List<IpdChargeResponse> charges) {}
+    List<IpdChargeResponse> charges,
+    BigDecimal hospitalDiscount,
+    BigDecimal laboratoryDiscount,
+    BigDecimal pharmacyDiscount) {}

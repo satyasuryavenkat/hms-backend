@@ -8,6 +8,7 @@ import java.util.List;
 public record IpdAdmissionResponse(
     Long id,
     String ipdNumber,
+    CareType careType,
     PatientResponse patient,
     AdmissionType admissionType,
     LocalDateTime admissionDateTime,
@@ -30,4 +31,4 @@ public record IpdAdmissionResponse(
     LocalDate followUpDate,
     DoctorResponse followUpDoctor,
     List<MedicationResponse> medications,
-    boolean dischargeDraft) {}
+    boolean dischargeDraft, OffsetDateTime dischargeDraftSavedAt) {}

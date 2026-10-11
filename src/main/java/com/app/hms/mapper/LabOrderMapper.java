@@ -40,7 +40,6 @@ public class LabOrderMapper {
                                         r.getResult(),
                                         r.getUnit(),
                                         r.getReferenceRange(),
-                                        r.getRemarks(),
                                         r.isAbnormal(),
                                         r.getParameterType() == null
                                             ? LabParameterType.NUMERIC
@@ -77,6 +76,9 @@ public class LabOrderMapper {
         o.getPaymentMode(),
         o.getPaymentStatus(),
         o.getReportStatus(),
+        o.getSignatureDesignation() == null
+            ? com.app.hms.common.Enums.LabSignatureDesignation.LAB_INCHARGE
+            : o.getSignatureDesignation(),
         o.getRemarks(),
         o.getCreatedAt());
   }

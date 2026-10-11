@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.*;
 
 public interface OpVisitRepository extends JpaRepository<OpVisit, Long> {
   @Query(
-      "select v from OpVisit v where (:date is null or v.appointmentDate=:date) and (:q='' or lower(v.patient.name) like lower(concat('%',:q,'%')) or lower(v.opNumber) like lower(concat('%',:q,'%')))")
+      "select v from OpVisit v where (:date is null or v.appointmentDate=:date) and (:q='' or lower(v.patient.name) like lower(concat('%',:q,'%')) or lower(v.patient.uhid) like lower(concat('%',:q,'%')) or v.patient.mobile like concat('%',:q,'%') or lower(v.receiptNumber) like lower(concat('%',:q,'%')) or lower(v.opNumber) like lower(concat('%',:q,'%')))")
   Page<OpVisit> search(String q, LocalDate date, Pageable p);
 }

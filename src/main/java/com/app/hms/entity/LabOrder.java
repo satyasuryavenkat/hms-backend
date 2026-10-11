@@ -47,6 +47,9 @@ public class LabOrder {
   @Enumerated(EnumType.STRING)
   private LabReportStatus reportStatus = LabReportStatus.PENDING;
 
+  @Enumerated(EnumType.STRING)
+  private LabSignatureDesignation signatureDesignation = LabSignatureDesignation.LAB_INCHARGE;
+
   private String cancellationReason;
   private String remarks;
   private OffsetDateTime createdAt;
@@ -56,5 +59,6 @@ public class LabOrder {
   @PrePersist
   void pre() {
     createdAt = OffsetDateTime.now();
+    if (signatureDesignation == null) signatureDesignation = LabSignatureDesignation.LAB_INCHARGE;
   }
 }

@@ -58,7 +58,15 @@ public class LabOrderController {
       @RequestParam(defaultValue = "") String query,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
-    return ApiResponse.ok(service.search(query, LabReportStatus.PENDING, null, page, size));
+    return ApiResponse.ok(service.pendingReports(query, page, size));
+  }
+
+  @GetMapping("/lab-reports/completed")
+  public ApiResponse<PageResponse<LabOrderResponse>> completed(
+      @RequestParam(defaultValue = "") String query,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    return ApiResponse.ok(service.completedReports(query, page, size));
   }
 
   @GetMapping("/lab-orders/{id}/report")
@@ -81,5 +89,14 @@ public class LabOrderController {
   @GetMapping(value = "/lab-orders/{id}/report.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
   public ResponseEntity<byte[]> reportPdf(@PathVariable Long id) {
     return PdfResponseFactory.attachment("lab-report-" + id + ".pdf", service.reportPdf(id));
+  }
+
+  @GetMapping(
+      value = "/lab-orders/{id}/tests/{testId}/report.pdf",
+      produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<byte[]> testReportPdf(
+      @PathVariable Long id, @PathVariable Long testId) {
+    return PdfResponseFactory.attachment(
+        "lab-report-" + id + "-test-" + testId + ".pdf", service.reportPdf(id, testId));
   }
 }

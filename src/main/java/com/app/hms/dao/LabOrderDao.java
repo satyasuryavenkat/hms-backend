@@ -12,4 +12,8 @@ public interface LabOrderDao {
   Optional<LabOrder> findById(Long id);
 
   Page<LabOrder> search(String query, LabReportStatus status, LocalDate date, Pageable pageable);
+
+  Page<LabOrder> searchCompletedReports(String query, Pageable pageable);
+
+  Page<LabOrder> searchPendingReports(String query, Pageable pageable);
 }

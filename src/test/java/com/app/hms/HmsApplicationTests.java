@@ -1,5 +1,7 @@
 package com.app.hms;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -8,11 +10,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.app.hms.common.Enums.Gender;
 import com.app.hms.common.Enums.AdmissionType;
+import com.app.hms.common.Enums.AdmissionStatus;
+import com.app.hms.common.Enums.CareType;
 import com.app.hms.common.Enums.DischargeType;
 import com.app.hms.common.Enums.FollowUpStatus;
 import com.app.hms.common.Enums.LabPriority;
 import com.app.hms.common.Enums.LabParameterType;
 import com.app.hms.common.Enums.LabReportStatus;
+import com.app.hms.common.Enums.LabSignatureDesignation;
 import com.app.hms.common.Enums.PaymentMode;
 import com.app.hms.common.Enums.SpecimenType;
 import com.app.hms.common.NotFoundException;
@@ -22,6 +27,8 @@ import com.app.hms.dto.request.DoctorRequest;
 import com.app.hms.dto.request.AttendantRequest;
 import com.app.hms.dto.request.DischargeRequest;
 import com.app.hms.dto.request.IpdAdmissionRequest;
+import com.app.hms.dto.request.IpdChargeCatalogRequest;
+import com.app.hms.dto.request.IpdChargeRequest;
 import com.app.hms.dto.request.FollowUpRequest;
 import com.app.hms.dto.request.LabParameterRequest;
 import com.app.hms.dto.request.LabResultRequest;
@@ -33,6 +40,7 @@ import com.app.hms.dto.request.SaveLabReportRequest;
 import com.app.hms.dao.UserDao;
 import com.app.hms.entity.Patient;
 import com.app.hms.repository.PatientRepository;
+import com.app.hms.repository.IpdAdmissionRepository;
 import com.app.hms.repository.FollowUpRepository;
 import com.app.hms.service.DoctorService;
 import com.app.hms.service.LabOrderService;
@@ -67,6 +75,7 @@ class HmsApplicationTests {
   @Autowired private FollowUpService followUpService;
   @Autowired private FollowUpRepository followUpRepository;
   @Autowired private PatientRepository patientRepository;
+  @Autowired private IpdAdmissionRepository ipdAdmissionRepository;
   @Autowired private UserDao userDao;
   @Autowired private ObjectMapper objectMapper;
 
@@ -80,7 +89,7 @@ class HmsApplicationTests {
             new PatientRequest(
                 "Follow-up Test Patient",
                 "9876509876",
-                LocalDate.of(1992, 6, 15),
+                34,
                 Gender.FEMALE,
                 "Test address"));
     var tomorrowReminder =
@@ -112,7 +121,7 @@ class HmsApplicationTests {
             new PatientRequest(
                 "Discharge Test Patient",
                 "9876504321",
-                LocalDate.of(1985, 1, 1),
+                41,
                 Gender.FEMALE,
                 "Test address"));
     var doctor =
@@ -152,6 +161,157 @@ class HmsApplicationTests {
 
     assertTrue(saved.dischargeDraft());
     assertTrue(saved.medications().isEmpty());
+  }
+
+  @Test
+  void allowsACompletedAdmissionsBedToBeUsedAgain() {
+    var patient =
+        patientService.create(
+            new PatientRequest("Bed Reuse Patient", "9876512345", 38, Gender.MALE, "Test address"));
+    var doctor =
+        doctorService.create(
+            new DoctorRequest(
+                "DOC-BED-REUSE", "Dr. Bed Reuse", "General Medicine", "Physician",
+                new BigDecimal("500"), true));
+    var request =
+        new IpdAdmissionRequest(
+            patient.id(), AdmissionType.PLANNED, LocalDate.now(), LocalTime.now(), doctor.id(),
+            "General", "REUSABLE-BED-1", "Observation",
+            new AttendantRequest("Test Attendant", "9876512346"));
+
+    var first = ipdService.create(request);
+    var completed = ipdAdmissionRepository.findById(first.id()).orElseThrow();
+    completed.setStatus(AdmissionStatus.DISCHARGED);
+    ipdAdmissionRepository.saveAndFlush(completed);
+
+    var second = ipdService.create(request);
+
+    assertNotNull(second.id());
+    assertEquals("REUSABLE-BED-1", second.bedNumber());
+  }
+
+  @Test
+  void keepsDaycareAdmissionsSeparateFromIpdAndUsesDaycareReferences() {
+    var patient =
+        patientService.create(
+            new PatientRequest(
+                "Daycare Test Patient", "9876512399", 29, Gender.FEMALE, "Test address"));
+    var doctor =
+        doctorService.create(
+            new DoctorRequest(
+                "DOC-DAYCARE-TEST", "Dr. Daycare Test", "General Medicine", "Physician",
+                new BigDecimal("500"), true));
+    var request =
+        new IpdAdmissionRequest(
+            patient.id(), AdmissionType.PLANNED, LocalDate.now(), LocalTime.now(), doctor.id(),
+            "Daycare", "DC-CHAIR-1", "Infusion observation",
+            new AttendantRequest("Daycare Attendant", "9876512300"));
+
+    var daycare = ipdService.createDaycare(request);
+
+    assertEquals(CareType.DAYCARE, daycare.careType());
+    assertTrue(daycare.ipdNumber().startsWith("DC-"));
+    assertTrue(
+        ipdService.searchDaycare("Daycare Test Patient", AdmissionStatus.ACTIVE).stream()
+            .anyMatch(item -> item.id().equals(daycare.id())));
+    assertTrue(
+        ipdService.search("Daycare Test Patient", AdmissionStatus.ACTIVE).stream()
+            .noneMatch(item -> item.id().equals(daycare.id())));
+    assertThrows(NotFoundException.class, () -> ipdService.findById(daycare.id()));
+  }
+
+  @Test
+  void managesIpdChargeCatalogAndUsesConfiguredRateForPatientCharges() {
+    var configured =
+        ipdService.createCatalogItem(
+            new IpdChargeCatalogRequest(
+                "Configured inpatient service",
+                "Test Services",
+                "Test Department",
+                new BigDecimal("725.00"),
+                true));
+    var patient =
+        patientService.create(
+            new PatientRequest("IPD Rate Test Patient", "9876507654", 48, Gender.MALE, "Test address"));
+    var doctor =
+        doctorService.create(
+            new DoctorRequest(
+                "DOC-IPD-RATE-TEST",
+                "Dr. IPD Rate Test",
+                "General Medicine",
+                "Physician",
+                new BigDecimal("500"),
+                true));
+    var admission =
+        ipdService.create(
+            new IpdAdmissionRequest(
+                patient.id(), AdmissionType.PLANNED, LocalDate.now(), LocalTime.now(), doctor.id(),
+                "Test Ward", "TEST-RATE-BED", "Observation",
+                new AttendantRequest("Rate Test Attendant", "9876507655")));
+
+    var charge =
+        ipdService.addCharge(
+            admission.id(),
+            new IpdChargeRequest(
+                configured.category(), configured.department(), configured.serviceName(),
+                new BigDecimal("2"), null, null));
+
+    assertEquals("TEST_SERVICES", charge.category());
+    assertEquals("Test Department", charge.department());
+    assertEquals("Configured inpatient service", charge.description());
+    assertEquals(new BigDecimal("725.00"), charge.rate());
+    assertEquals(new BigDecimal("1450.00"), charge.amount());
+
+    var labTest =
+        labTestService.create(
+            new LabTestRequest(
+                "IPD-LAB-BILL-TEST", "IPD Billing Lab Test", "Pathology",
+                new BigDecimal("375.00"), 4, SpecimenType.BLOOD, true, List.of()));
+    var labCharge =
+        ipdService.addCharge(
+            admission.id(),
+            new IpdChargeRequest(
+                "LAB_TESTS", "Pathology", labTest.name(), BigDecimal.ONE, labTest.id(),
+                new BigDecimal("1.00")));
+    assertEquals("LAB_TESTS", labCharge.category());
+    assertEquals(new BigDecimal("375.00"), labCharge.rate());
+    assertEquals(BigDecimal.ONE, labCharge.quantity());
+
+    var pharmacyCharge =
+        ipdService.addCharge(
+            admission.id(),
+            new IpdChargeRequest(
+                "PHARMACY", "Pharmacy", "IV consumable", new BigDecimal("3"), null,
+                new BigDecimal("125.00")));
+    var editedPharmacyCharge =
+        ipdService.updateCharge(
+            admission.id(), pharmacyCharge.id(),
+            new IpdChargeRequest(
+                "PHARMACY", "Pharmacy", "IV consumable pack", new BigDecimal("2"), null,
+                new BigDecimal("150.00")));
+    assertEquals(0, pharmacyCharge.quantity().compareTo(new BigDecimal("3")));
+    assertEquals(0, pharmacyCharge.amount().compareTo(pharmacyCharge.rate().multiply(new BigDecimal("3"))));
+    assertEquals(0, editedPharmacyCharge.quantity().compareTo(new BigDecimal("2")));
+    assertEquals(0, editedPharmacyCharge.amount().compareTo(new BigDecimal("300")));
+    assertEquals("IV consumable pack", editedPharmacyCharge.description());
+    assertEquals(new BigDecimal("150.00"), editedPharmacyCharge.rate());
+    ipdService.deleteCharge(admission.id(), pharmacyCharge.id());
+    assertTrue(
+        ipdService.charges(admission.id()).charges().stream()
+            .noneMatch(item -> item.id().equals(pharmacyCharge.id())));
+
+    var updated =
+        ipdService.updateCatalogItem(
+            configured.id(),
+            new IpdChargeCatalogRequest(
+                configured.serviceName(), configured.category(), configured.department(),
+                new BigDecimal("800.00"), false));
+    assertEquals(new BigDecimal("800.00"), updated.defaultRate());
+    assertTrue(!updated.active());
+    assertTrue(ipdService.catalog().stream().noneMatch(group -> group.toString().contains(configured.serviceName())));
+
+    ipdService.deleteCatalogItem(configured.id());
+    assertTrue(ipdService.catalogItems(null).stream().noneMatch(item -> item.id().equals(configured.id())));
   }
 
   @Test
@@ -351,6 +511,69 @@ class HmsApplicationTests {
   }
 
   @Test
+  void savesSerumTestAndGeneratesSerumSpecimenBarcode() {
+    var test = labTestService.create(new LabTestRequest(
+        "SERUM-TEST", "Serum Test", "Biochemistry", new BigDecimal("100"),
+        4, SpecimenType.SERUM, true, List.of()));
+    assertEquals(SpecimenType.SERUM, labTestService.findById(test.id()).specimenType());
+    var patient = new Patient();
+    patient.setName("Serum Test Patient");
+    patient.setMobile("9876501235");
+    patient.setAge(30);
+    patient.setGender(Gender.MALE);
+    patient = patientRepository.save(patient);
+    var order = labOrderService.create(new CreateLabOrderRequest(
+        patient.getId(), null, LabPriority.ROUTINE, List.of(test.id()),
+        BigDecimal.ZERO, PaymentMode.CASH));
+    assertEquals(1, order.specimens().size());
+    assertEquals(SpecimenType.SERUM, order.specimens().get(0).specimenType());
+    assertTrue(order.specimens().get(0).barcode().startsWith("SSE"));
+    assertEquals(SpecimenType.SERUM, order.tests().get(0).specimenType());
+  }
+
+  @Test
+  void savesPusTestAndGeneratesPusSpecimenBarcode() {
+    var test = labTestService.create(new LabTestRequest(
+        "PUS-TEST", "Pus Test", "Biochemistry", new BigDecimal("100"),
+        4, SpecimenType.PUS, true, List.of()));
+    assertEquals(SpecimenType.PUS, labTestService.findById(test.id()).specimenType());
+    var patient = new Patient();
+    patient.setName("Pus Test Patient");
+    patient.setMobile("9876501235");
+    patient.setAge(30);
+    patient.setGender(Gender.MALE);
+    patient = patientRepository.save(patient);
+    var order = labOrderService.create(new CreateLabOrderRequest(
+        patient.getId(), null, LabPriority.ROUTINE, List.of(test.id()),
+        BigDecimal.ZERO, PaymentMode.CASH));
+    assertEquals(1, order.specimens().size());
+    assertEquals(SpecimenType.PUS, order.specimens().get(0).specimenType());
+    assertTrue(order.specimens().get(0).barcode().startsWith("SPU"));
+    assertEquals(SpecimenType.PUS, order.tests().get(0).specimenType());
+  }
+
+  @Test
+  void savesSlidePreparationTestAndGeneratesSlidePreparationSpecimenBarcode() {
+    var test = labTestService.create(new LabTestRequest(
+        "SLIDE_PREPARATION-TEST", "SlidePreparation Test", "Biochemistry", new BigDecimal("100"),
+        4, SpecimenType.SLIDE_PREPARATION, true, List.of()));
+    assertEquals(SpecimenType.SLIDE_PREPARATION, labTestService.findById(test.id()).specimenType());
+    var patient = new Patient();
+    patient.setName("SlidePreparation Test Patient");
+    patient.setMobile("9876501235");
+    patient.setAge(30);
+    patient.setGender(Gender.MALE);
+    patient = patientRepository.save(patient);
+    var order = labOrderService.create(new CreateLabOrderRequest(
+        patient.getId(), null, LabPriority.ROUTINE, List.of(test.id()),
+        BigDecimal.ZERO, PaymentMode.CASH));
+    assertEquals(1, order.specimens().size());
+    assertEquals(SpecimenType.SLIDE_PREPARATION, order.specimens().get(0).specimenType());
+    assertTrue(order.specimens().get(0).barcode().startsWith("SSL"));
+    assertEquals(SpecimenType.SLIDE_PREPARATION, order.tests().get(0).specimenType());
+  }
+
+  @Test
   void generatesUniqueBloodAndUrineSpecimenBarcodesForLabOrder() {
     var bloodTest =
         labTestService.create(
@@ -383,7 +606,7 @@ class HmsApplicationTests {
     var patient = new Patient();
     patient.setName("Barcode Test Patient");
     patient.setMobile("9876501234");
-    patient.setDateOfBirth(LocalDate.of(1990, 1, 1));
+    patient.setAge(36);
     patient.setGender(Gender.MALE);
     patient = patientRepository.save(patient);
 
@@ -394,8 +617,11 @@ class HmsApplicationTests {
                 null,
                 LabPriority.ROUTINE,
                 List.of(bloodTest.id(), urineTest.id()),
+                new BigDecimal("25.00"),
                 PaymentMode.CASH));
 
+    assertEquals(new BigDecimal("325.00"), order.totalPayable());
+    assertEquals(new BigDecimal("25.00"), order.discount());
     assertEquals(2, order.specimens().size());
     assertEquals(2, order.specimens().stream().map(label -> label.barcode()).distinct().count());
     assertTrue(
@@ -425,14 +651,64 @@ class HmsApplicationTests {
             new SaveLabReportRequest(
                 reportItems.stream()
                     .filter(item -> item.parameterType() != LabParameterType.HEADING)
-                    .map(item -> new LabResultRequest(item.parameterId(), "Normal", "", false))
+                    .map(item -> new LabResultRequest(item.parameterId(), "Normal", false))
                     .toList(),
-                "No significant abnormality"));
+                "No significant abnormality",
+                LabSignatureDesignation.LAB_INCHARGE));
+    assertTrue(
+        labOrderService.pendingReports("Barcode Test Patient", 0, 20).content().stream()
+            .anyMatch(draft -> draft.id().equals(saved.id())
+                && draft.reportStatus() == LabReportStatus.DRAFT));
     var published =
         labOrderService.publish(
             saved.id(),
             new PublishLabReportRequest(
-                userDao.findAll().get(0).getId(), "No significant abnormality"));
+                userDao.findAll().get(0).getId(),
+                "No significant abnormality",
+                LabSignatureDesignation.CONSULTANT_PATHOLOGIST));
     assertEquals(LabReportStatus.VERIFIED, published.reportStatus());
+    assertEquals(
+        LabSignatureDesignation.CONSULTANT_PATHOLOGIST,
+        published.signatureDesignation());
+    assertTrue(
+        labOrderService.completedReports("Barcode Test Patient", 0, 20).content().stream()
+            .anyMatch(report -> report.id().equals(published.id())));
+    byte[] reportPdf = labOrderService.reportPdf(published.id());
+    assertTrue(reportPdf.length > 4);
+    assertEquals(
+        "%PDF",
+        new String(reportPdf, 0, 4, java.nio.charset.StandardCharsets.ISO_8859_1));
+    byte[] selectedTestPdf = labOrderService.reportPdf(published.id(), bloodTest.id());
+    assertEquals(
+        "%PDF",
+        new String(selectedTestPdf, 0, 4, java.nio.charset.StandardCharsets.ISO_8859_1));
+  }
+
+  @Test
+  void createsMedicineWithOnlyCatalogFieldsAndPreservesInventoryOnEdit() {
+    var request = new MedicineRequest(null, "Simple Medicine", null, "TABLET", null,
+        null, null, null, null, new BigDecimal("12.50"), null, null, true);
+    try (var factory = jakarta.validation.Validation.buildDefaultValidatorFactory()) {
+      assertTrue(factory.getValidator().validate(request).isEmpty());
+    }
+    var created = pharmacyService.createMedicine(request);
+    assertNotNull(created.manufacturerCode());
+    assertNull(created.expiryDate());
+    assertFalse(created.expired());
+    assertEquals(0, created.quantity());
+    var stocked = pharmacyService.updateMedicine(created.id(), new MedicineRequest(
+        created.manufacturerCode(), created.name(), null, "TABLET", null, "OLD-BATCH",
+        null, null, 20, created.unitPrice(), new BigDecimal("5.00"),
+        LocalDate.now().plusYears(1), true));
+    var edited = pharmacyService.updateMedicine(created.id(), new MedicineRequest(
+        null, "Renamed Medicine", null, "SYRUP", null, null, null, null, null,
+        new BigDecimal("15.00"), null, null, false));
+    assertEquals(stocked.manufacturerCode(), edited.manufacturerCode());
+    assertEquals(stocked.expiryDate(), edited.expiryDate());
+    assertEquals(stocked.quantity(), edited.quantity());
+    assertEquals(stocked.taxPercent(), edited.taxPercent());
+    assertEquals("OLD-BATCH", edited.batchNumber());
+    assertFalse(edited.active());
+    pharmacyService.deleteMedicine(created.id());
   }
 }

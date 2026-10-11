@@ -24,8 +24,7 @@ public class Patient {
   @Column(nullable = false, length = 15)
   private String mobile;
 
-  @Column(nullable = false)
-  private LocalDate dateOfBirth;
+  private Integer age;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
@@ -42,7 +41,4 @@ public class Patient {
     createdAt = OffsetDateTime.now();
   }
 
-  public int calculateAge() {
-    return Period.between(dateOfBirth, LocalDate.now()).getYears();
-  }
 }

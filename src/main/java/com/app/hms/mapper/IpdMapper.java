@@ -15,6 +15,7 @@ public class IpdMapper {
     return new IpdAdmissionResponse(
         a.getId(),
         a.getIpdNumber(),
+        a.getCareType() == null ? com.app.hms.common.Enums.CareType.IPD : a.getCareType(),
         patients.toResponse(a.getPatient()),
         a.getAdmissionType(),
         a.getAdmissionDateTime(),
@@ -46,7 +47,7 @@ public class IpdMapper {
                         m.getDuration(),
                         m.getInstructions()))
             .toList(),
-        a.isDischargeDraft());
+        a.isDischargeDraft(), a.getDischargeDraftSavedAt());
   }
 
   public IpdChargeResponse charge(IpdCharge c) {
@@ -54,7 +55,6 @@ public class IpdMapper {
         c.getId(),
         c.getCategory(),
         c.getDepartment(),
-        c.getServiceCode(),
         c.getDescription(),
         c.getQuantity(),
         c.getRate(),

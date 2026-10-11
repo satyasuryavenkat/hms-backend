@@ -46,6 +46,11 @@ public final class Enums {
     CANCELLED
   }
 
+  public enum LabSignatureDesignation {
+    LAB_INCHARGE,
+    CONSULTANT_PATHOLOGIST
+  }
+
   public enum LabParameterType {
     NUMERIC,
     TEXT,
@@ -54,10 +59,13 @@ public final class Enums {
 
   public enum SpecimenType {
     BLOOD,
+    SERUM,
     URINE,
     STOOL,
     SWAB,
     SPUTUM,
+    PUS,
+    SLIDE_PREPARATION,
     OTHER
   }
 
@@ -65,6 +73,11 @@ public final class Enums {
     PLANNED,
     EMERGENCY,
     TRANSFER
+  }
+
+  public enum CareType {
+    IPD,
+    DAYCARE
   }
 
   public enum AdmissionStatus {

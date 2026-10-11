@@ -37,6 +37,8 @@ public class JwtFilter extends OncePerRequestFilter {
                     var a = new ArrayList<SimpleGrantedAuthority>();
                     a.add(new SimpleGrantedAuthority("ROLE_" + u.getRole().name()));
                     u.getPermissions().forEach(p -> a.add(new SimpleGrantedAuthority(p)));
+                    ModulePermission.effective(u.getRole(), u.getPermissions()).forEach(
+                        p -> a.add(new SimpleGrantedAuthority(p)));
                     SecurityContextHolder.getContext()
                         .setAuthentication(
                             new UsernamePasswordAuthenticationToken(u.getUsername(), null, a));

@@ -58,9 +58,13 @@ public class LabOrderServiceImpl implements LabOrderService {
       o.getTests().add(i);
       total = total.add(t.getPrice());
     }
+    BigDecimal discount = Objects.requireNonNullElse(r.discount(), BigDecimal.ZERO);
+    if (discount.compareTo(total) > 0)
+      throw new BadRequestException("Discount cannot exceed the lab bill amount");
     o.setSubtotal(total);
-    o.setTotalPayable(total);
-    o.setPaidAmount(total);
+    o.setDiscount(discount);
+    o.setTotalPayable(total.subtract(discount));
+    o.setPaidAmount(total.subtract(discount));
     o.setPaymentMode(r.paymentMode());
     o.setPaymentStatus(PaymentStatus.PAID);
     o = orders.save(o);
@@ -74,6 +78,26 @@ public class LabOrderServiceImpl implements LabOrderService {
   public PageResponse<LabOrderResponse> search(
       String q, LabReportStatus s, LocalDate d, int page, int size) {
     Page<LabOrder> p = orders.search(PageUtils.query(q), s, d, PageUtils.request(page, size));
+    return mapPage(p);
+  }
+
+  @Override
+  @Transactional
+  public PageResponse<LabOrderResponse> completedReports(String query, int page, int size) {
+    Page<LabOrder> p =
+        orders.searchCompletedReports(PageUtils.query(query), PageUtils.request(page, size));
+    return mapPage(p);
+  }
+
+  @Override
+  @Transactional
+  public PageResponse<LabOrderResponse> pendingReports(String query, int page, int size) {
+    Page<LabOrder> p =
+        orders.searchPendingReports(PageUtils.query(query), PageUtils.request(page, size));
+    return mapPage(p);
+  }
+
+  private PageResponse<LabOrderResponse> mapPage(Page<LabOrder> p) {
     p.getContent()
         .forEach(
             order -> {
@@ -123,10 +147,12 @@ public class LabOrderServiceImpl implements LabOrderService {
               .orElseThrow(() -> new BadRequestException("Unknown parameter: " + x.parameterId()));
       if (result.getParameterType() == LabParameterType.HEADING) continue;
       result.setResult(x.result());
-      result.setRemarks(x.remarks());
       result.setAbnormal(x.abnormal());
     }
     o.setRemarks(r.remarks());
+    o.setSignatureDesignation(
+        Objects.requireNonNullElse(
+            r.signatureDesignation(), LabSignatureDesignation.LAB_INCHARGE));
     o.setReportStatus(LabReportStatus.DRAFT);
     return mapper.toResponse(orders.save(o));
   }
@@ -149,6 +175,11 @@ public class LabOrderServiceImpl implements LabOrderService {
     o.setVerifiedBy(u.getId());
     o.setVerifiedAt(OffsetDateTime.now());
     o.setRemarks(r.remarks());
+    o.setSignatureDesignation(
+        Objects.requireNonNullElse(
+            r.signatureDesignation(),
+            Objects.requireNonNullElse(
+                o.getSignatureDesignation(), LabSignatureDesignation.LAB_INCHARGE)));
     return mapper.toResponse(orders.save(o));
   }
 
@@ -172,17 +203,19 @@ public class LabOrderServiceImpl implements LabOrderService {
     if (o.getReportStatus() != LabReportStatus.VERIFIED
         && o.getReportStatus() != LabReportStatus.PUBLISHED)
       throw new BadRequestException("Report is not published");
-    return pdf.create(
-        "Laboratory Report",
-        Map.of(
-            "Order",
-            o.getOrderNumber(),
-            "Patient",
-            o.getPatient().getName(),
-            "Status",
-            o.getReportStatus(),
-            "Remarks",
-            Objects.toString(o.getRemarks(), "")));
+    return pdf.createLabReport(o);
+  }
+
+  @Override
+  public byte[] reportPdf(Long id, Long testId) {
+    LabOrder order = entity(id);
+    if (order.getReportStatus() != LabReportStatus.VERIFIED
+        && order.getReportStatus() != LabReportStatus.PUBLISHED)
+      throw new BadRequestException("Report is not published");
+    boolean includesTest =
+        order.getTests().stream().anyMatch(item -> Objects.equals(item.getTestId(), testId));
+    if (!includesTest) throw new BadRequestException("Test is not part of this lab order");
+    return pdf.createLabReport(order, testId);
   }
 
   private LabOrder entity(Long id) {
@@ -236,10 +269,13 @@ public class LabOrderServiceImpl implements LabOrderService {
   private String specimenPrefix(SpecimenType type) {
     return switch (type) {
       case BLOOD -> "SBL";
+      case SERUM -> "SSE";
       case URINE -> "SUR";
       case STOOL -> "SST";
       case SWAB -> "SSW";
       case SPUTUM -> "SSP";
+      case PUS -> "SPU";
+      case SLIDE_PREPARATION -> "SSL";
       case OTHER -> "SOT";
     };
   }
@@ -254,10 +290,7 @@ public class LabOrderServiceImpl implements LabOrderService {
 
   private boolean isBlankReport(LabOrderItem item) {
     return item.getResults().stream()
-        .allMatch(
-            result ->
-                (result.getResult() == null || result.getResult().isBlank())
-                    && (result.getRemarks() == null || result.getRemarks().isBlank()));
+        .allMatch(result -> result.getResult() == null || result.getResult().isBlank());
   }
 
   private boolean matchesCurrentTemplate(LabOrderItem item, LabTest test) {

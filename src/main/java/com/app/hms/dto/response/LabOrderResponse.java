@@ -22,6 +22,7 @@ public record LabOrderResponse(
     PaymentMode paymentMode,
     PaymentStatus paymentStatus,
     LabReportStatus reportStatus,
+    LabSignatureDesignation signatureDesignation,
     String remarks,
     OffsetDateTime createdAt) {
   public record TestItem(
@@ -41,7 +42,6 @@ public record LabOrderResponse(
       String result,
       String unit,
       String referenceRange,
-      String remarks,
       boolean abnormal,
       LabParameterType parameterType,
       Integer displayOrder) {}

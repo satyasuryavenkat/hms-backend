@@ -21,7 +21,6 @@ public class LabResult {
   private String result;
   private String unit;
   private String referenceRange;
-  private String remarks;
   private boolean abnormal;
 
   @Enumerated(EnumType.STRING)

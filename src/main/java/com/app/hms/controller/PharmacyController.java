@@ -58,4 +58,12 @@ public class PharmacyController {
   public ApiResponse<PharmacySaleResponse> sale(@PathVariable Long id) {
     return ApiResponse.ok(service.getSale(id));
   }
+
+  @GetMapping("/sales")
+  public ApiResponse<PageResponse<PharmacySaleResponse>> sales(
+      @RequestParam(defaultValue = "") String query,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    return ApiResponse.ok(service.searchSales(query, page, size));
+  }
 }

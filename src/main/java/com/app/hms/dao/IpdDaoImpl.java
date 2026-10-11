@@ -1,6 +1,7 @@
 package com.app.hms.dao;
 
 import com.app.hms.common.Enums.AdmissionStatus;
+import com.app.hms.common.Enums.CareType;
 import com.app.hms.entity.*;
 import com.app.hms.repository.*;
 import java.util.*;
@@ -22,12 +23,13 @@ public class IpdDaoImpl implements IpdDao {
     return admissions.findById(id);
   }
 
-  public List<IpdAdmission> search(String q, AdmissionStatus s) {
-    return admissions.search(q, s);
+  public List<IpdAdmission> search(String q, AdmissionStatus s, CareType careType) {
+    return admissions.search(q, s, careType, careType == CareType.IPD);
   }
 
-  public boolean bedOccupied(String b) {
-    return admissions.existsByBedNumberAndStatus(b, AdmissionStatus.ACTIVE);
+  public boolean bedOccupied(String b, CareType careType) {
+    return admissions.existsByBedNumberAndCareTypeAndStatusIn(
+        b, careType, List.of(AdmissionStatus.ACTIVE, AdmissionStatus.DISCHARGE_PLANNED));
   }
 
   public IpdCharge saveCharge(IpdCharge c) {

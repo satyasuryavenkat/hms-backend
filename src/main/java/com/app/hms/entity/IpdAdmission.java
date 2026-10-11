@@ -19,6 +19,9 @@ public class IpdAdmission {
   @Column(unique = true)
   private String ipdNumber;
 
+  @Enumerated(EnumType.STRING)
+  private CareType careType = CareType.IPD;
+
   @ManyToOne(optional = false)
   private Patient patient;
 
@@ -32,7 +35,6 @@ public class IpdAdmission {
 
   private String ward;
 
-  @Column(unique = true)
   private String bedNumber;
 
   private String provisionalDiagnosis;
@@ -44,6 +46,9 @@ public class IpdAdmission {
 
   private BigDecimal discount = BigDecimal.ZERO;
   private String discountReason;
+  private BigDecimal hospitalDiscount = BigDecimal.ZERO;
+  private BigDecimal laboratoryDiscount = BigDecimal.ZERO;
+  private BigDecimal pharmacyDiscount = BigDecimal.ZERO;
 
   @Enumerated(EnumType.STRING)
   private PaymentMode finalPaymentMode;
@@ -70,4 +75,5 @@ public class IpdAdmission {
   @ManyToOne private Doctor followUpDoctor;
   @ElementCollection private List<Medication> medications = new ArrayList<>();
   private boolean dischargeDraft;
+  private OffsetDateTime dischargeDraftSavedAt;
 }

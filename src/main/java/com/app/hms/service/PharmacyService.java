@@ -18,4 +18,5 @@ public interface PharmacyService {
   PharmacySaleResponse createSale(CreatePharmacySaleRequest request);
 
   PharmacySaleResponse getSale(Long id);
+  com.app.hms.dto.response.PageResponse<PharmacySaleResponse> searchSales(String query, int page, int size);
 }

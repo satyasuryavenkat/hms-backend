@@ -9,4 +9,8 @@ public record FinalBillSettlementRequest(
     String discountReason,
     @NotNull PaymentMode paymentMode,
     @NotNull @PositiveOrZero BigDecimal paidAmount,
-    String paymentReference) {}
+    String paymentReference,
+    @PositiveOrZero BigDecimal hospitalDiscount,
+    @PositiveOrZero BigDecimal laboratoryDiscount,
+    @PositiveOrZero BigDecimal pharmacyDiscount,
+    java.time.OffsetDateTime dischargeDateTime) {}

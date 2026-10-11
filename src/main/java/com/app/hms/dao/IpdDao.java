@@ -1,6 +1,7 @@
 package com.app.hms.dao;
 
 import com.app.hms.common.Enums.AdmissionStatus;
+import com.app.hms.common.Enums.CareType;
 import com.app.hms.entity.*;
 import java.util.*;
 
@@ -9,9 +10,9 @@ public interface IpdDao {
 
   Optional<IpdAdmission> findAdmission(Long id);
 
-  List<IpdAdmission> search(String q, AdmissionStatus status);
+  List<IpdAdmission> search(String q, AdmissionStatus status, CareType careType);
 
-  boolean bedOccupied(String bed);
+  boolean bedOccupied(String bed, CareType careType);
 
   IpdCharge saveCharge(IpdCharge c);
 

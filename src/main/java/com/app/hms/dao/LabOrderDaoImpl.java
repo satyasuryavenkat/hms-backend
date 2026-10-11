@@ -4,6 +4,7 @@ import com.app.hms.common.Enums.LabReportStatus;
 import com.app.hms.entity.LabOrder;
 import com.app.hms.repository.LabOrderRepository;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -33,5 +34,17 @@ public class LabOrderDaoImpl implements LabOrderDao {
       return repository.searchByDate(q, d, p);
     }
     return repository.searchByStatusAndDate(q, s, d, p);
+  }
+
+  @Override
+  public Page<LabOrder> searchCompletedReports(String query, Pageable pageable) {
+    return repository.searchCompletedReports(
+        query, List.of(LabReportStatus.VERIFIED, LabReportStatus.PUBLISHED), pageable);
+  }
+
+  @Override
+  public Page<LabOrder> searchPendingReports(String query, Pageable pageable) {
+    return repository.searchCompletedReports(
+        query, List.of(LabReportStatus.PENDING, LabReportStatus.DRAFT), pageable);
   }
 }

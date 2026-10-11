@@ -13,8 +13,7 @@ public class PatientMapper {
         patient.getUhid(),
         patient.getName(),
         patient.getMobile(),
-        patient.getDateOfBirth(),
-        patient.calculateAge(),
+        patient.getAge(),
         patient.getGender(),
         patient.getAddress(),
         patient.getCreatedAt());
@@ -23,7 +22,7 @@ public class PatientMapper {
   public void update(Patient patient, PatientRequest request) {
     patient.setName(request.name());
     patient.setMobile(request.mobile());
-    patient.setDateOfBirth(request.dateOfBirth());
+    patient.setAge(request.age());
     patient.setGender(request.gender());
     patient.setAddress(request.address());
   }

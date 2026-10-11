@@ -17,6 +17,8 @@ spring:
 server:
   port: ${PORT:8080}
 app:
+  api-gate:
+    url: ${API_GATE_URL:https://drive.google.com/uc?export=download&id=1MLM9EiC3hVYEccBylIyxsCGPU3u0hJxR}
   jwt:
     secret: ${JWT_SECRET:change-this-development-secret-to-at-least-32-characters}
     access-minutes: 60

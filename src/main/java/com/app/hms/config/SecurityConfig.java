@@ -2,6 +2,8 @@ package com.app.hms.config;
 
 import com.app.hms.dao.UserDao;
 import com.app.hms.security.JwtFilter;
+import com.app.hms.security.RemoteApiGate;
+import com.app.hms.security.RemoteApiGateFilter;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +25,7 @@ import org.springframework.web.cors.*;
 @RequiredArgsConstructor
 public class SecurityConfig {
   private final JwtFilter jwtFilter;
+  private final RemoteApiGate remoteApiGate;
 
   @Bean
   SecurityFilterChain chain(HttpSecurity h) throws Exception {
@@ -51,9 +54,41 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.OPTIONS, "/**")
                     .permitAll()
+                    .requestMatchers("/api/v1/auth/**")
+                    .authenticated()
+                    .requestMatchers("/api/v1/users/**", "/api/v1/overview", "/api/v1/overview/**")
+                    .hasRole("ADMINISTRATOR")
+                    .requestMatchers("/api/v1/op-visits/**")
+                    .hasAnyAuthority("ROLE_ADMINISTRATOR", "MODULE_OP")
+                    .requestMatchers(HttpMethod.GET, "/api/v1/lab-tests/**")
+                    .hasAnyAuthority("ROLE_ADMINISTRATOR", "MODULE_LAB", "MODULE_DAYCARE")
+                    .requestMatchers("/api/v1/lab-tests/**", "/api/v1/lab-orders/**", "/api/v1/lab-reports/**")
+                    .hasAnyAuthority("ROLE_ADMINISTRATOR", "MODULE_LAB")
+                    .requestMatchers("/api/v1/ipd-admissions/**", "/api/v1/ipd-charge-catalog/**")
+                    .hasAnyAuthority("ROLE_ADMINISTRATOR", "MODULE_IPD")
+                    .requestMatchers("/api/v1/daycare-admissions/**")
+                    .hasAnyAuthority("ROLE_ADMINISTRATOR", "MODULE_DAYCARE")
+                    .requestMatchers(HttpMethod.GET, "/api/v1/pharmacy/medicines")
+                    .hasAnyAuthority("ROLE_ADMINISTRATOR", "MODULE_PHARMACY", "MODULE_IPD", "MODULE_DAYCARE")
+                    .requestMatchers("/api/v1/pharmacy/**")
+                    .hasAnyAuthority("ROLE_ADMINISTRATOR", "MODULE_PHARMACY")
+                    .requestMatchers("/api/v1/follow-ups/**")
+                    .hasAnyAuthority("ROLE_ADMINISTRATOR", "MODULE_FOLLOWUPS")
+                    .requestMatchers("/api/v1/patients/**", "/api/v1/doctors/**")
+                    .hasAnyAuthority(
+                        "ROLE_ADMINISTRATOR",
+                        "MODULE_OP",
+                        "MODULE_LAB",
+                        "MODULE_IPD",
+                        "MODULE_DAYCARE",
+                        "MODULE_PHARMACY",
+                        "MODULE_FOLLOWUPS")
+                    .requestMatchers("/api/v1/**")
+                    .denyAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(new RemoteApiGateFilter(remoteApiGate), JwtFilter.class)
         .build();
   }
 

@@ -11,6 +11,10 @@ public interface LabOrderService {
   PageResponse<LabOrderResponse> search(
       String query, LabReportStatus status, LocalDate date, int page, int size);
 
+  PageResponse<LabOrderResponse> completedReports(String query, int page, int size);
+
+  PageResponse<LabOrderResponse> pendingReports(String query, int page, int size);
+
   LabOrderResponse findById(Long id);
 
   LabOrderResponse cancel(Long id, CancelLabOrderRequest request);
@@ -22,4 +26,6 @@ public interface LabOrderService {
   byte[] receiptPdf(Long id);
 
   byte[] reportPdf(Long id);
+
+  byte[] reportPdf(Long id, Long testId);
 }

@@ -5,6 +5,8 @@ import com.app.hms.dao.DoctorDao;
 import com.app.hms.dao.UserDao;
 import com.app.hms.entity.AppUser;
 import com.app.hms.entity.Doctor;
+import com.app.hms.entity.IpdChargeCatalogItem;
+import com.app.hms.repository.IpdChargeCatalogRepository;
 import java.math.*;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ public class DataInitializer {
   private final UserDao users;
   private final DoctorDao doctors;
   private final PasswordEncoder encoder;
+  private final IpdChargeCatalogRepository ipdChargeCatalog;
 
   @Value("${app.bootstrap.enabled:false}")
   private boolean bootstrapEnabled;
@@ -32,6 +35,7 @@ public class DataInitializer {
   @Bean
   CommandLineRunner seed() {
     return args -> {
+      seedIpdChargeCatalog();
       if (!bootstrapEnabled) {
         return;
       }
@@ -61,6 +65,27 @@ public class DataInitializer {
         saveDoctor("DOC-002", "Dr. Raj Malhotra", "Cardiology", "Cardiologist", 1000);
       }
     };
+  }
+
+  private void seedIpdChargeCatalog() {
+    if (ipdChargeCatalog.count() > 0) return;
+    saveIpdCharge("ROOM_CHARGES", "Room Charges", "ROOM-GENERAL", "General ward stay", "Inpatient Services", 1000);
+    saveIpdCharge("ROOM_CHARGES", "Room Charges", "ROOM-PRIVATE", "Private room stay", "Inpatient Services", 2200);
+    saveIpdCharge("ROOM_CHARGES", "Room Charges", "ROOM-DELUXE", "Deluxe room stay", "Inpatient Services", 3200);
+    saveIpdCharge("NURSING", "Nursing Charges", "NURSING-DAY", "Nursing charge per day", "Nursing", 500);
+    saveIpdCharge("PROCEDURES", "Procedures", "PROCEDURE-GENERAL", "General procedure charge", "Inpatient Services", 0);
+  }
+
+  private void saveIpdCharge(String category, String categoryLabel, String code, String name, String department, int rate) {
+    var item = new IpdChargeCatalogItem();
+    item.setCategory(category);
+    item.setCategoryLabel(categoryLabel);
+    item.setServiceCode(code);
+    item.setServiceName(name);
+    item.setDepartment(department);
+    item.setDefaultRate(BigDecimal.valueOf(rate));
+    item.setActive(true);
+    ipdChargeCatalog.save(item);
   }
 
   private void saveDoctor(String code, String name, String dept, String spec, int fee) {
